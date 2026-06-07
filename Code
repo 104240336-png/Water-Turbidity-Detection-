@@ -1,0 +1,77 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+const int sensorPin = 34;
+
+int dirtyWaterValue = 1200; 
+
+int clearWaterValue = 3500; 
+// -----------------------------------------------------
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("Loi OLED"));
+    for(;;);
+  }
+  
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.print("Hieu chuan...");
+  display.display();
+  delay(2000);
+}
+
+void loop() {
+  // Lấy trung bình cộng 20 lần đo để số không bị nhảy lung tung
+  long totalValue = 0;
+  for (int i = 0; i < 20; i++) {
+    totalValue += analogRead(sensorPin);
+    delay(10); 
+  }
+  int averageSensorValue = totalValue / 20;
+
+  Serial.print("Analog trung binh: ");
+  Serial.println(averageSensorValue);
+  
+  // Dùng 2 giá trị chuẩn đã lấy ở trên để tính %
+  int turbidity = map(averageSensorValue, dirtyWaterValue, clearWaterValue, 100, 0);
+  
+  // Ép giới hạn để phần trăm luôn đẹp (từ 0 đến 100%)
+  if (turbidity < 0) turbidity = 0;
+  if (turbidity > 100) turbidity = 100;
+
+
+  display.clearDisplay();
+  
+  display.setTextSize(2); 
+  display.setCursor(0, 10);
+  display.print("Duc:");
+  display.print(turbidity);
+  display.print("%");
+
+  display.setTextSize(1);
+  display.setCursor(0, 40);
+  
+  if (turbidity < 20) {
+    display.print("Nuoc: TRONG VEO");
+  } 
+  else if (turbidity >= 20 && turbidity < 50) {
+    display.print("Nuoc: HOI DUC");
+  } 
+  else {
+    display.print("Nuoc: RAT BAN");
+  }
+
+  display.display();
+  delay(800); 
+}
